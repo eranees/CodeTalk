@@ -1,0 +1,25 @@
+In the next version of the app, implement the following:
+
+Display a list of all groups the user is a member of.
+
+Allow the user to attempt joining any group from the list.
+
+Before granting access to the group, prompt the user to enter the group’s secret code for verification.
+
+Only if the entered code is correct, allow the user to access and chat in that group.
+
+✅ Functional Requirements
+
+Fetch and display user's group list after login/initial setup.
+
+On "Join" action:
+
+Prompt for group code.
+
+Validate code on the backend.
+
+If valid → join the group.
+
+If invalid → show error message (e.g., “Incorrect group code”).
+
+should be able to send images and videos in the group.

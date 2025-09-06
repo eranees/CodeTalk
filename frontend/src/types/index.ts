@@ -57,6 +57,7 @@ export interface ErrorData {
 export interface JoinGroupData {
   username: string;
   groupCode: string;
+  password?: string;
 }
 
 export interface SendMessageData {

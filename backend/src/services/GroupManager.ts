@@ -1,109 +1,182 @@
-import { Group, User, Message, JoinGroupData, SendMessageData, UserGroup } from '../types';
+import { DatabaseService } from './DatabaseService';
+import { UserEntity } from '../entities/user.entity';
+import { GroupEntity } from '../entities/group.entity';
+import { MessageEntity } from '../entities/message.entity';
+import logger from '../config/logger';
+import bcrypt from 'bcrypt';
 
 export class GroupManager {
-  private groups = new Map<string, Group>();
+  public databaseService: DatabaseService;
   private userSockets = new Map<string, string>(); // socketId -> username mapping
 
-  createGroup(groupCode: string): Group {
-    const groupId = `${groupCode}-${Date.now()}`;
-    const group: Group = {
-      id: groupId,
-      code: groupCode,
-      users: new Map(),
-      messages: [],
-      createdAt: new Date()
-    };
-    this.groups.set(groupId, group);
-    return group;
+  constructor() {
+    this.databaseService = new DatabaseService();
   }
 
-  findGroupByCode(groupCode: string): Group | undefined {
-    return Array.from(this.groups.values()).find(g => g.code === groupCode);
+  async createGroup(groupCode: string): Promise<GroupEntity> {
+    return await this.databaseService.createGroup(groupCode);
   }
 
-  getGroup(groupId: string): Group | undefined {
-    return this.groups.get(groupId);
+  async findGroupByCode(groupCode: string): Promise<GroupEntity | null> {
+    return await this.databaseService.findGroupByCode(groupCode);
   }
 
-  addUserToGroup(group: Group, socketId: string, username: string): User {
-    const user: User = {
-      id: socketId,
-      username,
-      socketId,
-      joinedAt: new Date(),
-      currentGroupId: group.id
-    };
-    group.users.set(socketId, user);
-    this.userSockets.set(socketId, username);
-    return user;
+  async getGroup(groupId: string): Promise<GroupEntity | null> {
+    return await this.databaseService.findGroupById(groupId);
   }
 
-  removeUserFromGroup(group: Group, socketId: string): User | undefined {
-    const user = group.users.get(socketId);
+  async getGroupWithActiveUsers(groupId: string): Promise<GroupEntity | null> {
+    return await this.databaseService.findGroupByIdWithActiveUsers(groupId);
+  }
+
+  async addUserToGroup(group: GroupEntity, socketId: string, username: string, password?: string): Promise<UserEntity> {
+    logger.info(`addUserToGroup: username="${username}", group="${group.code}", password="${password ? 'PROVIDED' : 'NOT_PROVIDED'}"`);
+    
+    // Check if user already exists in this specific group
+    const existingUserInGroup = await this.findExistingUserInGroup(group, username);
+    
+    if (existingUserInGroup) {
+      logger.info(`User "${username}" exists in group ${group.code} - updating socketId`);
+      // User exists in this group - update their socketId and status
+      await this.databaseService.updateUserSocketId(existingUserInGroup.id, socketId);
+      this.userSockets.set(socketId, username);
+      return existingUserInGroup;
+    } else {
+      // User doesn't exist in this group - check if user exists globally
+      let user = await this.databaseService.findUserByUsername(username);
+      
+      if (user) {
+        logger.info(`User "${username}" exists globally with password: ${user.password ? 'YES' : 'NO'}`);
+        
+        // Handle password logic for existing user
+        if (user.password && !password) {
+          // User has password but didn't provide one
+          logger.warn(`User "${username}" exists globally with password but no password provided for group ${group.code}`);
+          throw new Error(`Username "${username}" requires a password to join this group.`);
+        } else if (user.password && password) {
+          // User has password and provided one - verify it
+          const isValidPassword = await this.databaseService.verifyUserPassword(user, password);
+          if (!isValidPassword) {
+            logger.warn(`Invalid password for user "${username}" in group ${group.code}`);
+            throw new Error('Invalid password for this username.');
+          }
+          logger.info(`Valid password provided for user "${username}" in group ${group.code}`);
+        } else if (!user.password && password) {
+          // User doesn't have password but provided one - set it
+          logger.info(`Setting password for user "${username}" in group ${group.code}`);
+          await this.databaseService.updateUserPassword(user.id, password);
+          // Update the user object to reflect the new password
+          user.password = await bcrypt.hash(password, 10);
+        } else {
+          // User doesn't have password and didn't provide one - that's fine
+          logger.info(`User "${username}" joining group ${group.code} without password`);
+        }
+        
+        // Add them to this group
+        logger.info(`User "${username}" exists globally, adding to group ${group.code}`);
+        await this.databaseService.addUserToGroup(group.id, user.id);
+        await this.databaseService.updateUserSocketId(user.id, socketId);
+      } else {
+        // User doesn't exist anywhere - create new user
+        logger.info(`Creating new user "${username}" for group ${group.code} with password: ${password ? 'YES' : 'NO'}`);
+        user = await this.databaseService.createUser(username, socketId, password);
+        await this.databaseService.addUserToGroup(group.id, user.id);
+      }
+      
+      this.userSockets.set(socketId, username);
+      return user;
+    }
+  }
+
+  async removeUserFromGroup(group: GroupEntity, socketId: string): Promise<UserEntity | null> {
+    const user = await this.databaseService.findUserBySocketId(socketId);
     if (user) {
-      group.users.delete(socketId);
+      await this.databaseService.removeUserFromGroup(group.id, user.id);
+      // Clear the socketId to allow reconnection with same username
+      await this.databaseService.updateUserSocketId(user.id, '');
       this.userSockets.delete(socketId);
     }
     return user;
   }
 
-  removeUserFromAllGroups(socketId: string): { group: Group; user: User }[] {
-    const removedUsers: { group: Group; user: User }[] = [];
+  async removeUserFromAllGroups(socketId: string): Promise<{ group: GroupEntity; user: UserEntity }[]> {
+    const user = await this.databaseService.findUserBySocketId(socketId);
+    const removedUsers: { group: GroupEntity; user: UserEntity }[] = [];
     
-    this.groups.forEach((group, groupId) => {
-      if (group.users.has(socketId)) {
-        const user = group.users.get(socketId);
-        if (user) {
-          group.users.delete(socketId);
-          removedUsers.push({ group, user });
-        }
+    if (user) {
+      const userGroups = await this.databaseService.getUserGroups(user.id);
+      for (const group of userGroups) {
+        await this.databaseService.removeUserFromGroup(group.id, user.id);
+        removedUsers.push({ group, user });
       }
-    });
+      
+      // Clear the socketId to allow reconnection with same username
+      await this.databaseService.updateUserSocketId(user.id, '');
+      logger.info(`User ${user.username} status set to inactive, socketId cleared`);
+    }
     
     this.userSockets.delete(socketId);
     return removedUsers;
   }
 
-  addMessageToGroup(group: Group, message: Message): void {
-    group.messages.push(message);
+  async addMessageToGroup(group: GroupEntity, message: string, username: string, userId: string): Promise<MessageEntity> {
+    return await this.databaseService.createMessage(
+      message,
+      username,
+      group.code,
+      userId,
+      group.id
+    );
   }
 
-  getUserGroups(socketId: string): UserGroup[] {
-    return Array.from(this.groups.values())
-      .filter(g => g.users.has(socketId))
-      .map(g => ({
-        groupCode: g.code,
-        groupId: g.id,
-        memberCount: g.users.size,
-        members: Array.from(g.users.values()).map(u => u.username),
-        lastMessage: g.messages[g.messages.length - 1] || null
-      }));
+  async getUserGroups(socketId: string): Promise<any[]> {
+    const user = await this.databaseService.findUserBySocketId(socketId);
+    if (!user) return [];
+
+    const groups = await this.databaseService.getUserGroups(user.id);
+    return groups.map(group => ({
+      groupCode: group.code,
+      groupId: group.id,
+      memberCount: group.users?.length || 0,
+      members: group.users?.map(u => u.username) || [],
+      lastMessage: group.messages?.[group.messages.length - 1] || null
+    }));
   }
 
-  checkUsernameExists(group: Group, username: string): boolean {
-    return Array.from(group.users.values()).some(u => u.username === username);
+  async checkUsernameExists(group: GroupEntity, username: string): Promise<boolean> {
+    return await this.databaseService.isUsernameInGroup(username, group.id);
   }
 
-  cleanupEmptyGroup(groupId: string): void {
-    const group = this.groups.get(groupId);
-    if (group && group.users.size === 0) {
-      setTimeout(() => {
-        const currentGroup = this.groups.get(groupId);
-        if (currentGroup && currentGroup.users.size === 0) {
-          this.groups.delete(groupId);
+  async findExistingUserInGroup(group: GroupEntity, username: string): Promise<UserEntity | null> {
+    return await this.databaseService.isUsernameInGroupAnyStatus(username, group.id);
+  }
+
+
+  async verifyUserPassword(user: UserEntity, password: string): Promise<boolean> {
+    return await this.databaseService.verifyUserPassword(user, password);
+  }
+
+  async cleanupEmptyGroup(groupId: string): Promise<void> {
+    const group = await this.databaseService.findGroupById(groupId);
+    if (group && (!group.users || group.users.length === 0)) {
+      setTimeout(async () => {
+        const currentGroup = await this.databaseService.findGroupById(groupId);
+        if (currentGroup && (!currentGroup.users || currentGroup.users.length === 0)) {
+          await this.databaseService.deleteGroup(groupId);
         }
       }, 30000);
     }
   }
 
-  getStats() {
-    return {
-      activeGroups: this.groups.size,
-      totalUsers: Array.from(this.groups.values()).reduce((sum, group) => sum + group.users.size, 0)
-    };
+  async cleanupInactiveUsersFromGroup(groupId: string): Promise<void> {
+    await this.databaseService.cleanupInactiveUsersFromGroup(groupId);
   }
 
-  getAllGroups(): Group[] {
-    return Array.from(this.groups.values());
+  async getStats() {
+    return await this.databaseService.getStats();
+  }
+
+  async getGroupMessages(groupId: string): Promise<MessageEntity[]> {
+    return await this.databaseService.getGroupMessages(groupId);
   }
 }

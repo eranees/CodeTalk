@@ -12,6 +12,8 @@ export interface User {
   socketId: string;
   joinedAt: Date;
   currentGroupId?: string;
+  status: 'active' | 'inactive';
+  password?: string;
 }
 
 export interface Message {
@@ -27,6 +29,7 @@ export interface JoinGroupData {
   username: string;
   groupCode: string;
   groupId?: string;
+  password?: string;
 }
 
 export interface SendMessageData {

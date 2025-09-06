@@ -4,7 +4,7 @@ echo.
 
 echo Installing backend dependencies...
 cd backend
-call npm install
+call pnpm install
 if %errorlevel% neq 0 (
     echo Failed to install backend dependencies
     pause
@@ -13,7 +13,7 @@ if %errorlevel% neq 0 (
 
 echo Installing frontend dependencies...
 cd ..\frontend
-call npm install
+call pnpm install
 if %errorlevel% neq 0 (
     echo Failed to install frontend dependencies
     pause
@@ -22,13 +22,13 @@ if %errorlevel% neq 0 (
 
 echo.
 echo Starting backend server...
-start "Backend Server" cmd /k "cd ..\backend && npm run dev"
+start "Backend Server" cmd /k "cd ..\backend && pnpm run dev"
 
 echo Waiting for backend to start...
 timeout /t 3 /nobreak > nul
 
 echo Starting frontend development server...
-start "Frontend Server" cmd /k "cd frontend && npm run dev"
+start "Frontend Server" cmd /k "cd frontend && pnpm run dev"
 
 echo.
 echo Both servers are starting...

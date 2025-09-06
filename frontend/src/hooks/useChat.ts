@@ -78,7 +78,8 @@ export const useChat = () => {
         if (currentGroup && currentUsername) {
           socketService.joinGroup({ 
             username: currentUsername.trim(), 
-            groupCode: currentGroup.trim() 
+            groupCode: currentGroup.trim()
+            // Note: We don't have the password stored, so reconnection will prompt for it if needed
           });
         }
       }
@@ -149,22 +150,47 @@ export const useChat = () => {
           if (currentGroup && currentUsername) {
             socketService.joinGroup({ 
               username: currentUsername.trim(), 
-              groupCode: currentGroup.trim() 
+              groupCode: currentGroup.trim()
+              // Note: We don't have the password stored, so reconnection will prompt for it if needed
             });
           }
         }, 1000);
       }
     });
 
+    socketService.setOnLeftGroup(() => {
+      setCurrentGroup(null);
+      setCurrentGroupId(null);
+      setMessages([]);
+      setMembers([]);
+      setMemberCount(0);
+      setTypingUsers([]);
+      setNewMessage('');
+      setIsTyping(false);
+      setMyGroups([]);
+      setError(null);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    });
+
     // Connect to socket
     socketService.connect();
 
+    // Handle browser close/refresh
+    const handleBeforeUnload = () => {
+      socketService.logout();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       socketService.disconnect();
     };
   }, []);
 
-  const handleJoinGroup = (username: string, groupCode: string) => {
+  const handleJoinGroup = (username: string, groupCode: string, password?: string) => {
     if (!username.trim() || !groupCode.trim()) {
       setError('Please enter both username and group code');
       return;
@@ -173,7 +199,11 @@ export const useChat = () => {
     setUsername(username);
     setIsJoining(true);
     setError(null);
-    socketService.joinGroup({ username: username.trim(), groupCode: groupCode.trim() });
+    socketService.joinGroup({ 
+      username: username.trim(), 
+      groupCode: groupCode.trim(),
+      password: password?.trim()
+    });
   };
 
   const handleSendMessage = () => {
@@ -214,18 +244,8 @@ export const useChat = () => {
   };
 
   const handleLeaveGroup = () => {
-    setCurrentGroup(null);
-    setCurrentGroupId(null);
-    setMessages([]);
-    setMembers([]);
-    setMemberCount(0);
-    setTypingUsers([]);
-    setNewMessage('');
-    setIsTyping(false);
-    setMyGroups([]);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    // Emit leave group event to properly clean up user status
+    socketService.leaveGroup();
   };
 
   const handleClearError = () => {

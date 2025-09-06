@@ -181,3 +181,35 @@ node_modules/
 # Build outputs
 dist/
 build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# TypeORM
+src/migrations/*.js
+src/subscriber/*.js
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE specific
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

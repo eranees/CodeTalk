@@ -38,7 +38,7 @@ A full-stack real-time chat application similar to WhatsApp, built with Express.
 | Frontend | React (Vite), Material UI, socket.io-client, TypeScript |
 | Backend | Express.js, Socket.IO, TypeScript |
 | Runtime | Node.js |
-| Package Management | npm workspaces (monorepo) |
+| Package Management | pnpm workspaces (monorepo) |
 
 ## 📁 Project Structure
 
@@ -86,7 +86,7 @@ codetalk-monorepo/
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- npm (v8 or higher)
+- pnpm (v8 or higher)
 
 ### Installation
 
@@ -98,7 +98,7 @@ codetalk-monorepo/
 
 2. **Install all dependencies** (monorepo setup)
    ```bash
-   npm run install:all
+   pnpm run install:all
    ```
 
 ### Running the Application
@@ -106,16 +106,16 @@ codetalk-monorepo/
 #### Option 1: Quick Start (Recommended)
 ```bash
 # Install dependencies and start both servers
-npm run dev
+pnpm run dev
 ```
 
 #### Option 2: Manual Start
 ```bash
 # Terminal 1 - Backend
-npm run dev:backend
+ppnpm run dev:backend
 
 # Terminal 2 - Frontend
-npm run dev:frontend
+ppnpm run dev:frontend
 ```
 
 #### Option 3: Platform-specific Scripts
@@ -204,33 +204,33 @@ npm run dev:frontend
 npm run install:all
 
 # Development
-npm run dev                 # Start both frontend and backend
-npm run dev:frontend        # Start only frontend
-npm run dev:backend         # Start only backend
+pnpm run dev                 # Start both frontend and backend
+ppnpm run dev:frontend        # Start only frontend
+ppnpm run dev:backend         # Start only backend
 
 # Production
-npm run build              # Build both frontend and backend
-npm start                  # Start production servers
+pnpm run build              # Build both frontend and backend
+pnpm start                  # Start production servers
 
 # Maintenance
-npm run clean              # Clean node_modules and build artifacts
-npm run lint               # Run linting for all workspaces
-npm test                   # Run tests for all workspaces
+pnpm run clean              # Clean node_modules and build artifacts
+pnpm run lint               # Run linting for all workspaces
+pnpm test                   # Run tests for all workspaces
 ```
 
 ### Backend Development
 ```bash
 cd backend
-npm run dev    # Start with hot reload
-npm run build  # Build for production
-npm start      # Run production build
+pnpm run dev    # Start with hot reload
+pnpm run build  # Build for production
+pnpm start      # Run production build
 ```
 
 ### Frontend Development
 ```bash
 cd frontend
-npm run dev     # Start development server
-npm run build   # Build for production
+pnpm run dev     # Start development server
+pnpm run build   # Build for production
 npm run preview # Preview production build
 ```
 
@@ -280,5 +280,5 @@ If you have any questions or need help:
 - ✅ **Fixed real-time messaging** - Messages now appear instantly without page reload
 - ✅ **Added username validation** - Prevents duplicate usernames in same group
 - ✅ **Cleaned up console logs** - Removed unnecessary logging for production
-- ✅ **Monorepo structure** - Organized as npm workspaces for better development experience
+- ✅ **Monorepo structure** - Organized as pnpm workspaces for better development experience
 - ✅ **Enhanced error handling** - Better user feedback for various error scenarios

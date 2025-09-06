@@ -31,9 +31,19 @@ export class SocketService {
   private onMyGroups?: (groups: UserGroup[]) => void;
   private onUserTyping?: (data: TypingUser) => void;
   private onError?: (data: ErrorData) => void;
+  private onLeftGroup?: () => void;
 
   connect(): void {
-    this.socket = io('http://localhost:3001', {
+    // Use environment variable or detect local network IP
+    let backendUrl = import.meta.env.VITE_BACKEND_URL;
+    
+    if (!backendUrl) {
+      // If no environment variable, use localhost for development
+      // For mobile access, you'll need to set VITE_BACKEND_URL=http://192.168.1.12:3001
+      backendUrl = 'http://localhost:3001';
+    }
+    
+    this.socket = io(backendUrl, {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -96,6 +106,10 @@ export class SocketService {
     this.socket.on('error', (data: ErrorData) => {
       this.onError?.(data);
     });
+
+    this.socket.on('left-group', () => {
+      this.onLeftGroup?.();
+    });
   }
 
   // Event handler setters
@@ -147,6 +161,10 @@ export class SocketService {
     this.onError = handler;
   }
 
+  setOnLeftGroup(handler: () => void): void {
+    this.onLeftGroup = handler;
+  }
+
   // Socket actions
   joinGroup(data: JoinGroupData): void {
     this.socket?.emit('join-group', data);
@@ -170,6 +188,17 @@ export class SocketService {
 
   getMyGroups(): void {
     this.socket?.emit('get-my-groups');
+  }
+
+  leaveGroup(): void {
+    this.socket?.emit('leave-group');
+  }
+
+  logout(): void {
+    this.socket?.emit('logout');
+    this.socket?.disconnect();
+    this.socket = null;
+    this._isConnected = false;
   }
 
   // Getters

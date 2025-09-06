@@ -5,7 +5,7 @@ echo
 
 echo "Installing backend dependencies..."
 cd backend
-npm install
+pnpm install
 if [ $? -ne 0 ]; then
     echo "Failed to install backend dependencies"
     exit 1
@@ -13,7 +13,7 @@ fi
 
 echo "Installing frontend dependencies..."
 cd ../frontend
-npm install
+pnpm install
 if [ $? -ne 0 ]; then
     echo "Failed to install frontend dependencies"
     exit 1
@@ -22,7 +22,7 @@ fi
 echo
 echo "Starting backend server..."
 cd ../backend
-npm run dev &
+pnpm run dev &
 BACKEND_PID=$!
 
 echo "Waiting for backend to start..."
@@ -30,7 +30,7 @@ sleep 3
 
 echo "Starting frontend development server..."
 cd ../frontend
-npm run dev &
+pnpm run dev &
 FRONTEND_PID=$!
 
 echo
