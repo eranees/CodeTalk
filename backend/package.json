@@ -1,0 +1,23 @@
+{
+  "name": "codetalk-backend",
+  "version": "1.0.0",
+  "description": "Backend for group chat application using Express.js and Socket.IO",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^20.10.5",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  }
+}
